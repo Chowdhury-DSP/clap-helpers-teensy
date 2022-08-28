@@ -168,14 +168,15 @@ namespace clap { namespace helpers {
       self.ensureMainThread("clap_plugin.destroy");
       self._isBeingDestroyed = true;
 
-      if (self._isGuiCreated)
-      {
+      if (self._isGuiCreated) {
          if (l >= CheckingLevel::Minimal)
             self._host.pluginMisbehaving("host forgot to destroy the gui");
          clapGuiDestroy(plugin);
       }
 
+#if !CORE_TEENSY
       self.runCallbacksOnMainThread();
+#endif
 
       delete &self;
    }
@@ -185,10 +186,13 @@ namespace clap { namespace helpers {
       auto &self = from(plugin);
       self.ensureMainThread("clap_plugin.on_main_thread");
 
+#if !CORE_TEENSY
       self.runCallbacksOnMainThread();
+#endif
       self.onMainThread();
    }
 
+#if !CORE_TEENSY
    template <MisbehaviourHandler h, CheckingLevel l>
    void Plugin<h, l>::runCallbacksOnMainThread() {
       if (l >= CheckingLevel::Minimal) {
@@ -214,7 +218,7 @@ namespace clap { namespace helpers {
             cb();
       }
    }
-
+#endif
    template <MisbehaviourHandler h, CheckingLevel l>
    bool Plugin<h, l>::clapActivate(const clap_plugin *plugin,
                                    double sample_rate,
@@ -390,7 +394,8 @@ namespace clap { namespace helpers {
 
       if (!strcmp(id, CLAP_EXT_STATE) && self.implementsState())
          return &_pluginState;
-      if (!strcmp(id, CLAP_EXT_STATE_CONTEXT) && self.implementsStateContext() && self.implementsState())
+      if (!strcmp(id, CLAP_EXT_STATE_CONTEXT) && self.implementsStateContext() &&
+          self.implementsState())
          return &_pluginState;
       if (!strcmp(id, CLAP_EXT_PRESET_LOAD) && self.implementsPresetLoad())
          return &_pluginPresetLoad;
@@ -1081,18 +1086,19 @@ namespace clap { namespace helpers {
          uint32_t testWidth = *width;
          uint32_t testHeight = *height;
 
-         if (!self.guiAdjustSize(&testWidth, &testHeight))
-         {
-            self._host.pluginMisbehaving("clap_plugin_gui.adjust_size() failed when called with adjusted values");
+         if (!self.guiAdjustSize(&testWidth, &testHeight)) {
+            self._host.pluginMisbehaving(
+               "clap_plugin_gui.adjust_size() failed when called with adjusted values");
             return true;
          }
 
-         if (testWidth != *width || testHeight != *height)
-         {
+         if (testWidth != *width || testHeight != *height) {
             std::ostringstream os;
             os << "clap_plugin_gui.adjust_size() isn't stable:" << std::endl
-               << "  (" << inputWidth << ", " << inputHeight << ") -> (" << *width << ", " << *height << ")" << std::endl
-               << "  (" << *width << ", " << *height << ") -> (" << testWidth << ", " << testHeight << ")" << std::endl
+               << "  (" << inputWidth << ", " << inputHeight << ") -> (" << *width << ", "
+               << *height << ")" << std::endl
+               << "  (" << *width << ", " << *height << ") -> (" << testWidth << ", " << testHeight
+               << ")" << std::endl
                << "  !! Check you're rounding math!";
             self._host.pluginMisbehaving(os.str());
          }
@@ -1455,6 +1461,7 @@ namespace clap { namespace helpers {
       return *static_cast<Plugin *>(plugin->plugin_data);
    }
 
+#if !CORE_TEENSY
    template <MisbehaviourHandler h, CheckingLevel l>
    void Plugin<h, l>::runOnMainThread(std::function<void()> callback) {
       if (_host.canUseThreadCheck() && _host.isMainThread()) {
@@ -1466,6 +1473,7 @@ namespace clap { namespace helpers {
       _mainThredCallbacks.emplace(std::move(callback));
       _host.requestCallback();
    }
+#endif
 
    template <MisbehaviourHandler h, CheckingLevel l>
    uint32_t Plugin<h, l>::compareAudioPortsInfo(const clap_audio_port_info &a,

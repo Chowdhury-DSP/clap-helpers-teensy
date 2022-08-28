@@ -1,9 +1,11 @@
 #pragma once
 
 #include <cassert>
-#include <functional>
-#include <mutex>
-#include <queue>
+#if !CORE_TEENSY
+#   include <functional>
+#   include <mutex>
+#   include <queue>
+#endif
 #include <string>
 #include <string_view>
 #include <vector>
@@ -120,12 +122,12 @@ namespace clap { namespace helpers {
       audioPortsInfo(uint32_t index, bool isInput, clap_audio_port_info *info) const noexcept {
          return false;
       }
-       
+
       //--------------------------------//
       // clap_plugin_audio_ports_config //
       //--------------------------------//
-       
-      virtual bool  implementsAudioPortsConfig() const noexcept { return false; }
+
+      virtual bool implementsAudioPortsConfig() const noexcept { return false; }
       virtual uint32_t audioPortsConfigCount() const noexcept { return 0; }
       virtual bool audioPortsGetConfig(uint32_t index,
                                        clap_audio_ports_config *config) const noexcept {
@@ -250,6 +252,7 @@ namespace clap { namespace helpers {
       ///////////////
       static Plugin &from(const clap_plugin *plugin, bool requireInitialized = true) noexcept;
 
+#if !CORE_TEENSY
       // runs the callback immediately if on the main thread, otherwise queue it.
       // be aware that the callback may be ran during the plugin destruction phase,
       // so check isBeingDestroyed() and ajust your code.
@@ -257,6 +260,7 @@ namespace clap { namespace helpers {
 
       // This actually runs callbacks on the main thread, you should not need to call it
       void runCallbacksOnMainThread();
+#endif
 
       template <typename T>
       void initInterface(const T *&ptr, const char *id) noexcept;
@@ -454,7 +458,9 @@ namespace clap { namespace helpers {
       bool _isGuiFloating = false;
       bool _isGuiEmbedded = false;
 
+#if !CORE_TEENSY
       std::mutex _mainThredCallbacksLock;
       std::queue<std::function<void()>> _mainThredCallbacks;
+#endif
    };
 }} // namespace clap::helpers
